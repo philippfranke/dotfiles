@@ -1,0 +1,12 @@
+#!/bin/bash
+#
+# cleany
+#
+# `cleany` removes the current zsh history
+
+if [[ -a $HISTFILE ]]; then
+    rm -f $HISTFILE
+    echo "History removed"
+  else
+    echo "History not found"
+fi
