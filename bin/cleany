@@ -10,3 +10,8 @@ if [[ -a $HISTFILE ]]; then
   else
     echo "History not found"
 fi
+
+if test $(which brew); then
+  brew cleanup
+  echo "Successfully cleanup brew!"
+fi
