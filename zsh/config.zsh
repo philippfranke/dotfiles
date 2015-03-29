@@ -15,6 +15,7 @@ export CLICOLOR=true
 
 # history
 HISTFILE=~/.zsh_history
+export HISTFILE=$HISTFILE
 HISTSIZE=10000
 SAVEHIST=10000
 setopt HIST_VERIFY
