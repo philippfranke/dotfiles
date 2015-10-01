@@ -38,7 +38,7 @@ defaults write com.apple.dock dashboard-in-overlay -bool true
 defaults write com.apple.dock autohide-delay -float 0
 defaults write com.apple.dock autohide -bool true
 
-sudo ln -sf "/Applications/Xcode.app/Contents/Developer/Applications/iOS Simulator.app" "/Applications/iOS Simulator.app"
+sudo ln -sf "/Applications/Xcode.app/Contents/Developer/Applications/Simulator.app" "/Applications/Simulator.app"
 
 defaults write com.apple.mail DraftsViewerAttributes -dict-add "DisplayInThreadedMode" -string "yes"
 defaults write com.apple.mail DraftsViewerAttributes -dict-add "SortedDescending" -string "yes"
