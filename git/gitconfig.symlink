@@ -1,0 +1,136 @@
+[alias]
+	# Amend the currently staged files to the latest commit
+	amend = commit --amend --reuse-message=HEAD
+
+	# Commit all changes
+	ca = !git add -A && git commit -av
+
+	# Remove branches that have already been merged with master
+	# a.k.a. ‘delete merged’
+	dm = "!git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d; git remote -v update -p"
+
+	# Switch to a branch, creating it if necessary
+	go = "!f() { git checkout -b \"$1\" 2> /dev/null || git checkout \"$1\"; }; f"
+
+	# View abbreviated SHA, description, and history graph of the latest 20 commits
+	l = log --pretty=oneline -n 20 --graph --abbrev-commit
+
+	# Interactive rebase with the given number of latest commits
+	reb = "!r() { git rebase -i HEAD~$1; }; r"
+
+	# Show verbose output about tags, branches or remotes
+	tags = tag -l
+	branches = branch -a
+	remotes = remote -v
+
+	undo = !git reset HEAD~1 --mixed
+	update = !git fetch --all && git rebase origin/master 
+
+[apply]
+
+	# Detect whitespace errors when applying a patch	
+	whitespace = fix
+
+[core]
+
+	# Use custom `.gitignore` and `.gitattributes`	
+	excludesfile = ~/.gitignore
+	attributesfile = ~/.gitattributes
+
+	# Treat spaces before tabs and all kinds of trailing whitespace as an error
+	# [default] trailing-space: looks for spaces at the end of a line
+	# [default] space-before-tab: looks for spaces before tabs at the beginning of a line
+	whitespace = space-before-tab,-indent-with-non-tab,trailing-space
+
+	# Make `git rebase` safer on OS X
+	# More info: <http://www.git-tower.com/blog/make-git-rebase-safe-on-osx/>
+	trustctime = false
+        editor = nvim
+
+[color]
+
+	ui = auto
+
+[color "branch"]
+
+	current = yellow reverse
+	local = yellow
+	remote = green
+
+[color "diff"]
+
+	meta = yellow bold
+	frag = magenta bold # line info
+	old = red # deletions
+	new = green # additions
+
+[color "status"]
+
+	added = yellow
+	changed = green
+	untracked = cyan
+
+[diff]
+
+	# Detect copies as well as renames
+	renames = copies
+
+[help]
+
+	# Automatically correct and execute mistyped commands
+        autocorrect = 1
+
+[hub]
+	
+	protocol = ssh
+
+[merge]
+
+	# Include summaries of merged commits in newly created merge commit messages
+	log = true
+
+[pull]
+	rebase = true
+
+[push]
+
+        # See `git help config` (search for push.default)
+        # for more information on different options of the below setting.
+        #
+        # Setting to git 2.0 default to suppress warning message
+        default = simple
+
+[user]
+	
+	# Do not guess the user's identity.
+	useConfigOnly = true
+
+[url "git@github.com:github"]
+
+	insteadOf = "https://github.com/github"
+	insteadOf = "github:github"
+	insteadOf = "git://github.com/github"
+
+[url "git@github.com:"]
+
+	pushInsteadOf = "https://github.com/"
+	pushInsteadOf = "github:"
+	pushInsteadOf = "git://github.com/"
+
+[url "git://github.com/"]
+
+	insteadOf = "github:"
+
+[url "git@gist.github.com:"]
+
+	insteadOf = "gst:"
+	pushInsteadOf = "gist:"
+	pushInsteadOf = "git://gist.github.com/"
+
+[url "git://gist.github.com/"]
+
+	insteadOf = "gist:"
+
+[include]
+
+	path = ~/.gitconfig.local
