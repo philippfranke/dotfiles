@@ -1,0 +1,44 @@
+# Cheers, @holman
+# From https://github.com/holman/dotfiles/blob/master/zsh/zshrc.symlink
+
+# Setting the character encoding to UTF-8
+export LC_CTYPE="UTF-8"
+export LC_ALL="en_US.UTF-8"
+
+# Set $ZSH as a shortcut to the dotfiles path
+export ZSH="${HOME}/.dotfiles"
+
+# Define a shortcut for your project folder
+# It can be accessed by `c [tab]`
+export PROJECTS="${HOME}/Code"
+
+# If a .localrc file exists, source it
+if [[ -a "${HOME}/.localrc" ]]; then
+  source "${HOME}/.localrc"
+fi
+
+# Gather all zsh files in your dotfiles path
+typeset -U config_files
+config_files=("${ZSH}"/**/*.zsh)
+
+# Load all the path files first
+for file in ${(M)config_files:#*/path.zsh}; do
+  source "${file}" || { echo "Error sourcing ${file}"; exit 1; }
+done
+
+# Load all non-path and non-completion zsh files
+for file in ${${config_files:#*/path.zsh}:#*/completion.zsh}; do
+  source "${file}" || { echo "Error sourcing ${file}"; exit 1; }
+done
+
+# Initialize zsh autocomplete function
+autoload -U compinit
+compinit
+
+# Load all zsh completion files after the autocomplete is initialized
+for file in ${(M)config_files:#*/completion.zsh}; do
+  source "${file}" || { echo "Error sourcing ${file}"; exit 1; }
+done
+
+# Clean up the config_files variable
+unset config_files
