@@ -14,8 +14,21 @@ The repository is organized as follows:
 
 ```
 . 
+├── zsh/
+│   └── zshrc.symlink
 └── README.md
 ```
+
+## Setting Up Environment Variables
+Some environment variables need to be set for the dotfiles to work as expected. Instead of putting these variables directly in your dotfiles, I recommended storing them in a separate file: `~/.localrc`.
+
+Create this file and add your environment variables in the following format `export VARNAME=value`.
+
+```zsh
+export LC_CTYPE=UTF-8
+```
+
+The environment variables in `~/.localrc` will be automatically sourced when you open a new terminal session, as specified in the provided `.zshrc`.
 
 ## License
 
