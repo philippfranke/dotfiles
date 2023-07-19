@@ -1,0 +1,16 @@
+#!/bin/zsh
+#
+# This lets you quickly jump into a project directory.
+#
+# Type:
+#
+#   c <tab>
+#
+# ...to autocomplete on all of your projects in the directories specified in
+# `functions/_c`. Typically I'm using it like:
+#
+#    c phi<tab>/dot<tab>
+#
+# ...to quickly jump into philippfranke/dotfiles, for example.
+
+cd "${PROJECTS}/$1"

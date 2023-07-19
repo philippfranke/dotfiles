@@ -14,6 +14,9 @@ The repository is organized as follows:
 
 ```
 . 
+├── functions/
+│   ├── c
+│   └── _c
 ├── zsh/
 │   ├── *.zsh
 │   └── zshrc.symlink
