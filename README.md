@@ -17,6 +17,8 @@ The repository is organized as follows:
 ├── functions/
 │   ├── c
 │   └── _c
+├── macos/
+│   └── *.sh
 ├── zsh/
 │   ├── *.zsh
 │   └── zshrc.symlink
