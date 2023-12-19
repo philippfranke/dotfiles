@@ -1,0 +1,74 @@
+# Attach session if it exists
+new-session -A -D -s main
+
+# Look and Feel {
+# true colors
+set-option -ga terminal-overrides ",xterm-256color:Tc"
+
+# The panes
+set-option -g pane-border-style fg=colour238,bg=colour235
+set-option -g pane-active-border-style fg=colour51,bg=colour236
+
+# The statusbar
+set-option -g status-style fg=colour137,bg=colour234,dim
+set-option -g status-position bottom
+set-option -g status-left '#[fg=colour233,bg=colour241,bold] #(whoami)@#H '
+set-option -g status-right '#[fg=colour233,bg=colour241] #(~/.dotfiles/bin/battery_status.sh) #[fg=colour233,bg=colour243] %d/%m/%Y #[fg=colour233,bg=colour245] %H:%M:%S ' 
+set-option -g status-right-length 80
+set-option -g status-left-length 80
+
+set-option -w -g clock-mode-colour colour135
+set-option -w -g mode-style fg=colour196,bg=colour238,bold
+set-option -w -g window-status-current-style fg=colour81,bg=colour238,bold
+set-option -w -g window-status-current-format ' #I#[fg=colour250]:#[fg=colour255]#W#[fg=colour50]#F '
+set-option -w -g window-status-style fg=colour138,bg=colour235,none
+set-option -w -g window-status-format ' #I#[fg=colour237]:#[fg=colour250]#W#[fg=colour244]#F '
+set-option -w -g window-status-bell-style fg=colour255,bg=colour1,bold
+
+# The messages
+set-option -g message-style fg=colour232,bg=colour166,bold
+
+# }
+
+# Functionality {
+# split-screen
+bind-key v split-window -h -c '#{pane_current_path}'
+bind-key s split-window -v -c '#{pane_current_path}'
+
+# Use Alt-arrow keys without prefix key to switch panes
+is_vim="ps -o state= -o comm= -t '#{pane_tty}' \
+    | grep -iqE '^[^TXZ ]+ +(\\S+\\/)?g?(view|n?vim?x?)(diff)?$'"
+bind-key -n C-h if-shell "$is_vim" "send-keys C-h"  "select-pane -L"
+bind-key -n C-j if-shell "$is_vim" "send-keys C-j"  "select-pane -D"
+bind-key -n C-k if-shell "$is_vim" "send-keys C-k"  "select-pane -U"
+bind-key -n C-l if-shell "$is_vim" "send-keys C-l"  "select-pane -R"
+
+bind-key h select-pane -L
+bind-key j select-pane -D
+bind-key k select-pane -U
+bind-key l select-pane -R
+set-option -g status-keys vi
+
+# enable vi mode keys
+set-option -w -g mode-keys vi
+bind-key -T copy-mode-vi 'v' send -X begin-selection
+bind-key -T copy-mode-vi 'y' send -X copy-pipe-and-cancel "reattach-to-user-namespace pbcopy"
+bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "reattach-to-user-namespace pbcopy"
+unbind-key -T copy-mode-vi Enter
+bind-key -T copy-mode-vi Enter send-keys -X copy-pipe "reattach-to-user-namespace pbcopy"
+bind-key ] run "reattach-to-user-namespace pbpaste | tmux load-buffer - && tmux paste-buffer"
+
+# source file reload
+unbind-key r
+bind-key r source-file ~/.tmux.conf \; display "Reloaded!"
+ 
+# Resize pane
+bind-key J resize-pane -D 5
+bind-key K resize-pane -U 5
+bind-key H resize-pane -L 5
+bind-key L resize-pane -R 5
+
+set-option -g mouse off
+set-option -g default-command "reattach-to-user-namespace -l zsh"
+set-option -s escape-time 0
+# }
