@@ -312,7 +312,7 @@ let g:fzf_history_dir = '~/.local/share/fzf-history'
 let g:fzf_commits_log_options = '--graph --color=always --format="%C(auto)%h%d %s %C(black)%C(bold)%cr"'
 
 " ==================== vim-go ====================
-let g:go_bin_path = expand("$HOME/go/bin")
+let g:go_bin_path = expand("$HOME/.go/bin")
 let g:go_fmt_fail_silently = 1
 let g:go_debug_windows = {
       \ 'vars':  'leftabove 35vnew',
