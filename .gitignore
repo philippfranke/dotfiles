@@ -1,0 +1,16 @@
+# macOS cruft
+.DS_Store
+
+# Archives / diagnostics dumps
+*.zip
+git-diagnostics-*
+
+# Identity & machine-local overrides — never commit these
+*.identity
+*.local
+
+# GnuPG private material — never commit
+**/.gnupg/
+
+# Local Claude settings
+.claude/settings.local.json
