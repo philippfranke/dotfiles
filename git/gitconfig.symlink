@@ -6,7 +6,7 @@
 	# Commit all changes
 	ca = !git add -A && git commit -av
 
-	# Remove branches that have already been merged with master
+	# Remove branches that have already been merged into the current branch
 	# a.k.a. ‘delete merged’
 	dm = "!git branch --merged | grep -v '\\*' | xargs -n 1 git branch -d; git remote -v update -p"
 
@@ -25,7 +25,7 @@
 	remotes = remote -v
 
 	undo = !git reset HEAD~1 --mixed
-	update = !git fetch --all && git rebase origin/master 
+	update = !git fetch --all && git rebase @{upstream}
 
 [apply]
 
