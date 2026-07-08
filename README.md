@@ -91,9 +91,24 @@ email = "<context-email>"
 key = "<context-GPG-KEY-ID>"   # or: behavior = "drop" to leave this context unsigned
 ```
 
+### Claude Code
+
+`~/.claude/settings.json` is symlinked from `claude/settings.json` (a nested link,
+so `script/bootstrap` handles it specially rather than via the `*.symlink` rule).
+One private plugin marketplace is intentionally kept out of this public repo. On a
+new machine it's preserved in the untracked `~/.claude/private-marketplaces.local.json`;
+re-add it where needed as a project-level `.claude/settings.local.json` override.
+
+> Note: Claude Code rewrites `~/.claude/settings.json` when you change settings via
+> the app, so review `git diff` before committing — don't let a private marketplace
+> or other machine-specific value slip into the public repo.
+
 ## Layout
 
 ```
-alacritty/  git/  gnupg/  jj/  tmux/  vim/  zsh/   # config (topic dirs)
-bin/  functions/  script/                          # helpers + bootstrap
+alacritty/  claude/  docker/  git/  gnupg/  go/  jj/  rust/  tmux/  vim/  zsh/  1password/
+bin/  functions/  script/                                 # helpers + bootstrap
 ```
+
+Tool PATH entries live in per-topic `path.zsh` files (`go/`, `rust/`), loaded in
+zshrc's first pass; `zsh/path.zsh` holds the base PATH and dedupes via `typeset -U`.
