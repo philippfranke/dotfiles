@@ -2,7 +2,11 @@
 # (see vim/vimrc.symlink g:go_bin_path). ~/go/bin kept as a fallback so tools
 # installed there before this move stay on PATH until reinstalled.
 export GOPATH="$HOME/.go"
-export PATH="$HOME/.local/bin:$HOME/.go/bin:$HOME/go/bin:$PATH"
+
+# Dedupe PATH so the entries below don't stack up (rustup already adds
+# ~/.cargo/bin via ~/.zshenv; we also declare it here to be self-contained).
+typeset -U path PATH
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.go/bin:$HOME/go/bin:$PATH"
 
 # Homebrew's zsh 5.9.1 bottle bakes in an fpath that points at a
 # non-existent versioned functions dir (.../zsh/5.9/functions rather than
