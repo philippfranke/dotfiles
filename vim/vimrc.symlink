@@ -1,11 +1,11 @@
 call plug#begin('~/.vim/plugged')
 
 Plug 'tpope/vim-fugitive', { 'tag': 'v3.7' }
-Plug 'preservim/nerdtree', { 'tag': '7.1.2' }
+Plug 'preservim/nerdtree', { 'tag': '7.1.3' }
 Plug 'fatih/vim-go', { 'do': ':GoUpdateBinaries' }
 Plug 'raimondi/delimitmate', { 'tag': '2.7' }
 Plug 'chriskempson/base16-vim'
-Plug 'junegunn/fzf', { 'tag': 'v0.60.1', 'do': { -> fzf#install() } }
+Plug 'junegunn/fzf', { 'tag': 'v0.74.0', 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
 Plug 'mileszs/ack.vim', { 'tag': '1.0.9' }
 Plug 'christoomey/vim-tmux-navigator'
