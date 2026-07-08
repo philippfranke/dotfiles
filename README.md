@@ -110,5 +110,16 @@ alacritty/  claude/  docker/  git/  gnupg/  go/  jj/  rust/  tmux/  vim/  zsh/  
 bin/  functions/  script/                                 # helpers + bootstrap
 ```
 
-Tool PATH entries live in per-topic `path.zsh` files (`go/`, `rust/`), loaded in
-zshrc's first pass; `zsh/path.zsh` holds the base PATH and dedupes via `typeset -U`.
+### Shell env vs interactive config
+
+Environment/PATH and interactive config are deliberately split (standard zsh convention):
+
+- **`~/.zshenv`** (`zsh/zshenv.symlink`) is sourced by *every* zsh — including the
+  non-interactive `zsh -c` that nvim's `:!`/`system()`, tmux's server, and GUI-launched
+  apps spawn. It sources the per-topic `path.zsh` files (`go/`, `rust/`, `zsh/`), so
+  `GOPATH` and the tool bin dirs (`~/.go/bin`, `~/.cargo/bin`, `~/.local/bin`) are set
+  everywhere — not just in interactive shells.
+- **`~/.zshrc`** re-sources those `path.zsh` files in its first pass so the intended
+  order survives macOS `/etc/zprofile` `path_helper` reordering on login shells, then
+  loads the interactive-only bits (aliases, prompt, completion). `typeset -U` keeps the
+  double-sourcing duplicate-free.

@@ -1,0 +1,23 @@
+# ~/.zshenv — sourced by EVERY zsh invocation (login & non-login, interactive &
+# scripts). Environment and PATH belong here so NON-interactive shells get the
+# same env as interactive ones: nvim's `:!`/system() calls, tmux's server, and
+# GUI-launched apps each spawn a non-interactive `zsh -c`, which sources ONLY this
+# file (never ~/.zshrc). Aliases, prompt, and completion stay in ~/.zshrc.
+
+export ZSH="${ZSH:-$HOME/.dotfiles}"
+
+# Keep PATH/fpath entries unique so repeated sourcing can't stack duplicates.
+typeset -U path PATH fpath
+
+# rustup's env (adds ~/.cargo/bin). Kept as its canonical line so `rustup` sees
+# it and won't re-append; rust/path.zsh below also covers ~/.cargo/bin.
+[[ -r "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
+
+# Source every topic-level path.zsh (go/, rust/, zsh/, …) so GOPATH and the tool
+# bin dirs are set for ALL shells. ~/.zshrc re-sources these in its first pass so
+# the intended order survives macOS /etc/zprofile's path_helper reordering on
+# login shells.
+for _pathfile in "$ZSH"/**/path.zsh(N); do
+  source "$_pathfile"
+done
+unset _pathfile
