@@ -1,0 +1,327 @@
+#!/usr/bin/env bash
+#
+# rotate-signing-key — rotate the GPG *signing subkey* used for commit signing,
+# then repoint the untracked $HOME identity files at the new key id.
+#
+# Contains NO identity: the primary key, the config files and the old key ids are
+# all discovered at runtime from $HOME. Nothing key-specific is committed here.
+# See README.md ("Identity — lives ONLY in untracked $HOME files").
+#
+# Signing subkeys are issued with a short lifetime, so `git commit -S` starts
+# failing with "signing failed: No secret key" the day one expires — that message
+# means *no usable* secret key, not a missing one. This script issues the next one.
+#
+# Rotation is ALWAYS a fresh subkey. Expiries are never extended: an expired key is
+# left expired, so each subkey covers one bounded, closed stretch of history and a
+# compromised key can never be quietly given a longer life.
+#
+# The primary key's own secret is normally kept offline (it shows as `sec#` in
+# `gpg -K`). Rotation needs it, so restore it from your backup first; `--restub`
+# puts the keyring back to subkeys-only afterwards.
+#
+# Usage:
+#   script/rotate-signing-key                  # add a new ed25519 signing subkey, 1y
+#   script/rotate-signing-key --validity 2y    # different lifetime (gpg syntax: 30d/6m/2y)
+#   script/rotate-signing-key --primary <ID>   # skip auto-discovery of the primary key
+#   script/rotate-signing-key --restub         # re-offline the primary secret when done
+#   DRY_RUN=1 script/rotate-signing-key        # print what WOULD happen, change nothing
+
+set -e
+
+VALIDITY=1y
+ALGO=${ALGO:-ed25519}
+PRIMARY=
+RESTUB=false
+
+info () {
+  printf "  [ \033[00;34m..\033[0m ] %s\n" "$1"
+}
+
+user () {
+  printf "\r  [ \033[0;33m?\033[0m ] %s " "$1"
+}
+
+success () {
+  printf "\r\033[2K  [ \033[00;32mOK\033[0m ] %s\n" "$1"
+}
+
+warn () {
+  printf "  [ \033[0;33m!!\033[0m ] %s\n" "$1"
+}
+
+fail () {
+  printf "\r\033[2K  [\033[0;31mFAIL\033[0m] %s\n" "$1"
+  echo ''
+  exit 1
+}
+
+# run — execute, or just narrate under DRY_RUN.
+run () {
+  if [ "${DRY_RUN:-}" = "1" ]; then
+    success "would run: $*"
+    return 0
+  fi
+  "$@"
+}
+
+# usage — reprint the header block above, up to the first non-comment line.
+usage () {
+  sed -n '2,/^[^#]/p' "$0" | sed '$d' | sed 's/^#\{0,1\} \{0,1\}//'
+  exit 0
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --validity) VALIDITY=$2; shift ;;
+    --primary)  PRIMARY=$2; shift ;;
+    --restub)   RESTUB=true ;;
+    -h|--help)  usage ;;
+    *)          fail "unknown argument: $1 (try --help)" ;;
+  esac
+  shift
+done
+
+echo ''
+
+command -v gpg >/dev/null 2>&1 || fail 'gpg not found on PATH'
+
+# ---------------------------------------------------------------------------
+# Key inspection helpers. All parsing uses gpg's stable --with-colons format:
+# field 1=type 2=validity 5=keyid 6=created 7=expires 10=fpr 12=caps 15=serial
+# ---------------------------------------------------------------------------
+
+# primary_fpr_of <keyid> — resolve any key/subkey id to its primary fingerprint.
+primary_fpr_of () {
+  gpg --list-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '$1=="fpr" {print $10; exit}'
+}
+
+# signing_subkeys <primary-fpr> — emit "keyid<TAB>fpr<TAB>created<TAB>expires<TAB>validity"
+# for every signing-capable subkey, expired ones included.
+signing_subkeys () {
+  gpg --list-options show-unusable-subkeys \
+      --list-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '
+        $1=="sub" && $12 ~ /s/ { keyid=$5; created=$6; expires=$7; val=$2; next }
+        $1=="fpr" && keyid     { print keyid "\t" $10 "\t" created "\t" expires "\t" val; keyid="" }
+      '
+}
+
+# primary_secret_available <primary-fpr> — false when the secret is an offline stub.
+primary_secret_available () {
+  local serial
+  serial=$(gpg --list-secret-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '$1=="sec" {print $15; exit}')
+  [ -n "$serial" ] && [ "$serial" != "#" ]
+}
+
+human_date () {
+  [ -n "$1" ] && [ "$1" != "0" ] || { echo "never"; return; }
+  date -r "$1" '+%Y-%m-%d' 2>/dev/null || date -d "@$1" '+%Y-%m-%d' 2>/dev/null || echo "$1"
+}
+
+# ---------------------------------------------------------------------------
+# Identity files. Discovered, never hardcoded — the per-context ".local" names
+# are work-context names and must not land in this public repo.
+# ---------------------------------------------------------------------------
+
+git_identity_files () {
+  local f
+  for f in "$HOME"/.gitconfig.identity "$HOME"/.gitconfig*.local; do
+    [ -f "$f" ] && echo "$f"
+  done
+}
+
+jj_identity_files () {
+  local f="$HOME/.config/jj/config.toml"
+  [ -f "$f" ] && echo "$f"
+}
+
+# ---------------------------------------------------------------------------
+# 1. Find the primary key
+# ---------------------------------------------------------------------------
+
+if [ -z "$PRIMARY" ]; then
+  info 'discovering primary key from $HOME identity files'
+  candidates=$(
+    {
+      while read -r f; do
+        git config --file "$f" --get user.signingkey 2>/dev/null || true
+      done < <(git_identity_files)
+      while read -r f; do
+        sed -n 's/^[[:space:]]*key[[:space:]]*=[[:space:]]*"\([0-9A-Fa-fx]\{8,\}\)".*/\1/p' "$f"
+      done < <(jj_identity_files)
+    } | sort -u
+  )
+
+  [ -n "$candidates" ] || fail 'no signing key referenced in any identity file — pass --primary <ID>'
+
+  primaries=$(while read -r id; do
+    [ -n "$id" ] && primary_fpr_of "$id"
+  done <<< "$candidates" | sort -u | sed '/^$/d')
+
+  count=$(echo "$primaries" | grep -c . || true)
+  [ "$count" -eq 1 ] || fail "identity files reference $count distinct primary keys — pass --primary <ID>"
+
+  PRIMARY=$primaries
+else
+  PRIMARY=$(primary_fpr_of "$PRIMARY")
+  [ -n "$PRIMARY" ] || fail 'that key id is not in your keyring'
+fi
+
+success "primary key $PRIMARY"
+
+# ---------------------------------------------------------------------------
+# 2. Report current signing-subkey state
+# ---------------------------------------------------------------------------
+
+now=$(date +%s)
+live=0
+
+info 'current signing subkeys:'
+while IFS=$'\t' read -r keyid fpr created expires val; do
+  [ -n "$keyid" ] || continue
+  if [ "$val" = "r" ]; then
+    state='revoked'
+  elif [ -n "$expires" ] && [ "$expires" != "0" ] && [ "$expires" -le "$now" ]; then
+    state='EXPIRED'
+  else
+    state='valid'
+    live=$((live + 1))
+  fi
+  printf '         %-16s  created %s  expires %s  %s\n' \
+    "$keyid" "$(human_date "$created")" "$(human_date "$expires")" "$state"
+done < <(signing_subkeys "$PRIMARY")
+
+if [ "$live" -gt 0 ]; then
+  warn "$live signing subkey(s) still valid — rotating early is fine, just noting it"
+fi
+
+# ---------------------------------------------------------------------------
+# 3. Rotate. Needs the primary secret, which is normally kept offline.
+# ---------------------------------------------------------------------------
+
+if ! primary_secret_available "$PRIMARY"; then
+  # Under DRY_RUN this is only a warning, so the rest of the plan stays previewable.
+  if [ "${DRY_RUN:-}" = "1" ]; then
+    warn "primary secret is offline (sec#) — a real run would stop here"
+  else
+    echo ''
+    fail "primary secret is offline (shows as 'sec#').
+         Restore it from your backup before rotating, e.g.
+           gpg --import /path/to/primary-secret.asc
+         then re-run this script (add --restub to re-offline it afterwards)."
+  fi
+fi
+
+before=$(signing_subkeys "$PRIMARY" | cut -f1 | sort)
+
+info "adding a new $ALGO signing subkey, valid $VALIDITY"
+run gpg --quick-add-key "$PRIMARY" "$ALGO" sign "$VALIDITY"
+
+if [ "${DRY_RUN:-}" = "1" ]; then
+  NEWKEY='<new-key-id>'
+else
+  # The new id is whatever appeared that wasn't there a moment ago.
+  NEWKEY=$(comm -13 <(echo "$before") <(signing_subkeys "$PRIMARY" | cut -f1 | sort) | head -1)
+  [ -n "$NEWKEY" ] || fail 'could not determine the new subkey id'
+fi
+
+success "signing subkey is now $NEWKEY"
+
+# ---------------------------------------------------------------------------
+# 4. Repoint identity files. Only files that already sign with THIS primary are
+#    touched — contexts that deliberately don't sign stay untouched.
+# ---------------------------------------------------------------------------
+
+echo ''
+info 'updating $HOME identity files'
+
+backup_once () {
+  [ "${DRY_RUN:-}" = "1" ] && return 0
+  [ -f "$1.rotate-bak" ] || cp "$1" "$1.rotate-bak"
+}
+
+while read -r f; do
+  cur=$(git config --file "$f" --get user.signingkey 2>/dev/null || true)
+  if [ -z "$cur" ]; then
+    info "$(basename "$f"): no active signing key — left alone"
+    continue
+  fi
+  if [ "$(primary_fpr_of "$cur")" != "$PRIMARY" ]; then
+    warn "$(basename "$f"): $cur belongs to a different primary — left alone"
+    continue
+  fi
+  if [ "$cur" = "$NEWKEY" ]; then
+    success "$(basename "$f"): already $NEWKEY"
+    continue
+  fi
+  backup_once "$f"
+  run git config --file "$f" user.signingkey "$NEWKEY"
+  success "$(basename "$f"): $cur -> $NEWKEY"
+done < <(git_identity_files)
+
+while read -r f; do
+  while read -r id; do
+    [ -n "$id" ] || continue
+    [ "$id" = "$NEWKEY" ] && continue
+    [ "$(primary_fpr_of "$id")" = "$PRIMARY" ] || continue
+    backup_once "$f"
+    if [ "${DRY_RUN:-}" = "1" ]; then
+      success "would update $(basename "$f"): $id -> $NEWKEY"
+    else
+      sed -i '' "s/\"$id\"/\"$NEWKEY\"/g" "$f"
+      success "$(basename "$f"): $id -> $NEWKEY"
+    fi
+  done < <(sed -n 's/^[[:space:]]*key[[:space:]]*=[[:space:]]*"\([0-9A-Fa-fx]\{8,\}\)".*/\1/p' "$f" | sort -u)
+done < <(jj_identity_files)
+
+# ---------------------------------------------------------------------------
+# 5. Optionally put the primary secret back offline
+# ---------------------------------------------------------------------------
+
+if [ "$RESTUB" = true ]; then
+  echo ''
+  if [ "${DRY_RUN:-}" = "1" ]; then
+    success 'would re-offline the primary secret (export subkeys, delete, re-import)'
+  else
+    stash=$(mktemp -t subkeys)
+    gpg --export-secret-subkeys "$PRIMARY" > "$stash"
+    [ -s "$stash" ] || { rm -f "$stash"; fail 'subkey export was empty — refusing to delete the secret key'; }
+
+    user "delete the primary secret from this keyring and re-import subkeys only? [y/N]"
+    read -r reply; echo ''
+    case "$reply" in
+      y|Y)
+        gpg --batch --yes --delete-secret-keys "$PRIMARY"
+        gpg --import "$stash"
+        success 'primary secret is offline again (sec#)'
+        ;;
+      *)  warn "left as-is — primary secret is still in $HOME/.gnupg" ;;
+    esac
+    rm -f "$stash"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
+# 6. What only you can do
+# ---------------------------------------------------------------------------
+
+echo ''
+echo '  Signing works again locally, but the new subkey is not published yet:'
+echo ''
+echo "    gpg --armor --export $PRIMARY | pbcopy    # paste into GitHub → SSH and GPG keys"
+echo "    gpg --send-keys $PRIMARY                  # if you publish to a keyserver"
+echo ''
+echo '  Re-adding the same primary on GitHub refreshes it in place — existing'
+echo '  "Verified" badges are kept, since the old signatures were made while the'
+echo '  old subkey was still valid.'
+echo ''
+echo '  Verify with a real signature:'
+echo ''
+echo "    echo test | gpg --local-user $NEWKEY --clearsign >/dev/null && echo OK"
+echo ''
+if [ "$RESTUB" != true ] && [ "${DRY_RUN:-}" != "1" ]; then
+  warn 'primary secret is still in this keyring — re-run with --restub to offline it'
+  echo ''
+fi

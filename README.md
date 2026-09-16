@@ -63,7 +63,16 @@ git's `user` signing-key setting, and enable `[commit] gpgsign`:
 ```
 
 Signing is per context — leave it off (`gpgsign = false`, no key) where you don't
-sign. A key that has expired will make `git commit` fail to sign until renewed.
+sign. A key that has expired will make `git commit` fail to sign until renewed —
+gpg reports this as `signing failed: No secret key`, which means *no usable* key,
+not a missing one.
+
+To renew, run `script/rotate-signing-key` (`--help` for options, `DRY_RUN=1` to
+preview). It issues a new signing subkey and repoints every `$HOME` identity file —
+git *and* jj — at the new key id. Like `script/bootstrap` it holds no identity: the
+primary key and the files to update are discovered at runtime. It needs the primary
+key's secret, which is normally kept offline (`sec#` in `gpg -K`), so import your
+backup first and pass `--restub` to put it back offline afterwards.
 
 ### Jujutsu (jj)
 
