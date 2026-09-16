@@ -103,6 +103,22 @@ re-add it where needed as a project-level `.claude/settings.local.json` override
 > the app, so review `git diff` before committing — don't let a private marketplace
 > or other machine-specific value slip into the public repo.
 
+### 1Password
+
+`1password/op.zsh` wraps `claude` so Claude Code starts via `op run`: secrets are
+pulled from 1Password at launch and exist only in the `claude` process — nothing
+in the repo, nothing exported in the shell. The wrapper is a plain pass-through
+until you create the untracked env file:
+
+```sh
+cp ~/.dotfiles/1password/claude.env.example ~/.config/op/claude.env
+chmod 600 ~/.config/op/claude.env   # then fill in op://<vault>/<item>/<field> references
+```
+
+The real file stays out of the repo because it names your vaults and items.
+Override its location with `CLAUDE_OP_ENV_FILE`. The same file also sources the
+`op plugin init` shims from `~/.config/op/plugins.sh` when present.
+
 ## Layout
 
 ```
