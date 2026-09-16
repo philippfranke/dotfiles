@@ -13,9 +13,10 @@ DRY_RUN=1 script/bootstrap   # preview: print what would be linked, change nothi
 script/bootstrap             # link everything (prompts before touching existing files)
 ```
 
-`script/bootstrap` also creates the two links that don't use the `*.symlink`
-convention — `~/.config/nvim/init.vim` and `~/.gnupg/gpg-agent.conf` — and creates
-missing parent directories. **It contains and generates no identity.**
+`script/bootstrap` also creates the links that don't use the `*.symlink`
+convention — `~/.config/nvim/init.vim`, `~/.gnupg/gpg-agent.conf`,
+`~/.claude/settings.json` and `~/.config/gh/config.yml` — and creates missing
+parent directories. **It contains and generates no identity.**
 
 ## Identity — lives ONLY in untracked `$HOME` files
 
@@ -128,10 +129,21 @@ The real file stays out of the repo because it names your vaults and items.
 Override its location with `CLAUDE_OP_ENV_FILE`. The same file also sources the
 `op plugin init` shims from `~/.config/op/plugins.sh` when present.
 
+## GitHub CLI (gh)
+
+`gh` is the GitHub client (it replaced `hub`; `git` is no longer aliased).
+Tracked settings — `git_protocol: ssh`, aliases — live in `gh/config.yml`,
+linked to `~/.config/gh/config.yml`. `gh config set` / `gh alias set` write
+through that link, so changes show up as a repo diff. Auth lives in the
+untracked `~/.config/gh/hosts.yml` (never commit it); run `gh auth login`
+once per machine, then `gh auth setup-git` so gh also serves git's https
+credentials (already wired in `git/gitconfig.symlink`). A per-host
+`git_protocol` in `hosts.yml` overrides the tracked default.
+
 ## Layout
 
 ```
-alacritty/  claude/  docker/  git/  gnupg/  go/  jj/  rust/  tmux/  vim/  zsh/  1password/
+alacritty/  claude/  docker/  gh/  git/  gnupg/  go/  jj/  rust/  tmux/  vim/  zsh/  1password/
 bin/  functions/  script/                                 # helpers + bootstrap
 ```
 
