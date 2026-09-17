@@ -15,7 +15,7 @@ script/bootstrap             # link everything (prompts before touching existing
 
 `script/bootstrap` also creates the links that don't use the `*.symlink`
 convention — `~/.config/nvim/init.vim`, `~/.gnupg/gpg-agent.conf`,
-`~/.claude/settings.json` and `~/.config/gh/config.yml` — and creates missing
+`~/.claude/settings.json`, `~/.config/gh/config.yml` and `~/.ssh/config` — and creates missing
 parent directories. **It contains and generates no identity.**
 
 ## Identity — lives ONLY in untracked `$HOME` files
@@ -129,6 +129,11 @@ The real file stays out of the repo because it names your vaults and items.
 Override its location with `CLAUDE_OP_ENV_FILE`. The same file also sources the
 `op plugin init` shims from `~/.config/op/plugins.sh` when present.
 
+`1password/ssh_config` is linked to `~/.ssh/config` and routes every host through
+the 1Password SSH agent (`IdentityAgent`), so private keys live in 1Password rather
+than in `~/.ssh`. Enable the agent in 1Password → Settings → Developer on a new
+machine. Auth material (`known_hosts`, any leftover keys) stays untracked.
+
 ## GitHub CLI (gh)
 
 `gh` is the GitHub client (it replaced `hub`; `git` is no longer aliased).
@@ -143,7 +148,7 @@ credentials (already wired in `git/gitconfig.symlink`). A per-host
 ## Layout
 
 ```
-alacritty/  claude/  docker/  gh/  git/  gnupg/  go/  jj/  rust/  tmux/  vim/  zsh/  1password/
+alacritty/  claude/  docker/  gh/  git/  gnupg/  go/  homebrew/  jj/  rust/  tmux/  vim/  zsh/  1password/
 bin/  functions/  script/                                 # helpers + bootstrap
 ```
 
@@ -153,9 +158,10 @@ Environment/PATH and interactive config are deliberately split (standard zsh con
 
 - **`~/.zshenv`** (`zsh/zshenv.symlink`) is sourced by *every* zsh — including the
   non-interactive `zsh -c` that nvim's `:!`/`system()`, tmux's server, and GUI-launched
-  apps spawn. It sources the per-topic `path.zsh` files (`go/`, `rust/`, `zsh/`), so
-  `GOPATH` and the tool bin dirs (`~/.go/bin`, `~/.cargo/bin`, `~/.local/bin`) are set
-  everywhere — not just in interactive shells.
+  apps spawn. It sources the per-topic `path.zsh` files (`homebrew/`, `go/`, `rust/`,
+  `zsh/`), so Homebrew (`brew shellenv`), `GOPATH` and the tool bin dirs (`~/.go/bin`,
+  `~/.cargo/bin`, `~/.local/bin`) are set everywhere — not just in interactive shells.
+  There is deliberately no `~/.zprofile`: it only runs for login shells.
 - **`~/.zshrc`** re-sources those `path.zsh` files in its first pass so the intended
   order survives macOS `/etc/zprofile` `path_helper` reordering on login shells, then
   loads the interactive-only bits (aliases, prompt, completion). `typeset -U` keeps the
