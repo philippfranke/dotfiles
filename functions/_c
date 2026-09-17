@@ -1,2 +1,8 @@
 #compdef c
+
+# `c` only jumps to directories under $PROJECTS, so don't offer completions
+# for absolute or ~-prefixed paths: `_files -W` silently ignores the -W prefix
+# when the word starts with `/` or `~` and would complete the real filesystem.
+[[ $words[CURRENT] == [/~]* ]] && return 1
+
 _files -W $PROJECTS -/
