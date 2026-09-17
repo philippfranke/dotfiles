@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# commit-msg — the pre-commit hook scans staged CONTENT; this one scans the
+# commit MESSAGE against the same untracked deny-list, since an org name in a
+# subject line is just as public as one in a file. See .githooks/pre-commit.
+
+set -u
+
+denylist="${DOTFILES_DENYLIST:-$HOME/.config/dotfiles/denylist}"
+[ -r "$denylist" ] || exit 0
+
+patterns=$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' -e '/^$/d' "$denylist")
+[ -n "$patterns" ] || exit 0
+
+# Ignore comment lines: git strips them from the final message anyway.
+hits=$(grep -v '^#' "$1" | grep -iE -f <(printf '%s\n' "$patterns") || true)
+[ -z "$hits" ] && exit 0
+
+printf '\033[0;31m%s\033[0m\n' 'commit-msg: the commit message matches the deny-list:'
+printf '%s\n' "$hits" | sed 's/^/    /'
+echo ''
+printf '\033[0;31m%s\033[0m\n' 'Commit rejected. Reword the message, or bypass knowingly with --no-verify.'
+exit 1

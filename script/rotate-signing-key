@@ -17,7 +17,9 @@
 #
 # The primary key's own secret is normally kept offline (it shows as `sec#` in
 # `gpg -K`). Rotation needs it, so restore it from your backup first; `--restub`
-# puts the keyring back to subkeys-only afterwards.
+# puts the keyring back to subkeys-only afterwards. It does that by asking
+# gpg-agent to delete just the primary's private key (by keygrip), so the subkeys
+# are never exported and no secret material ever touches a temp file.
 #
 # Usage:
 #   script/rotate-signing-key                  # add a new ed25519 signing subkey, 1y
@@ -84,6 +86,9 @@ done
 echo ''
 
 command -v gpg >/dev/null 2>&1 || fail 'gpg not found on PATH'
+if [ "$RESTUB" = true ]; then
+  command -v gpg-connect-agent >/dev/null 2>&1 || fail 'gpg-connect-agent not found on PATH (needed for --restub)'
+fi
 
 # ---------------------------------------------------------------------------
 # Key inspection helpers. All parsing uses gpg's stable --with-colons format:
@@ -113,6 +118,13 @@ primary_secret_available () {
   serial=$(gpg --list-secret-keys --with-colons "$1" 2>/dev/null \
     | awk -F: '$1=="sec" {print $15; exit}')
   [ -n "$serial" ] && [ "$serial" != "#" ]
+}
+
+# primary_keygrip <primary-fpr> — the agent-side handle for the primary's secret.
+# The first "grp" record follows the "sec" record, so it belongs to the primary.
+primary_keygrip () {
+  gpg --with-keygrip --list-secret-keys --with-colons "$1" 2>/dev/null \
+    | awk -F: '$1=="grp" {print $10; exit}'
 }
 
 human_date () {
@@ -278,28 +290,39 @@ done < <(jj_identity_files)
 
 # ---------------------------------------------------------------------------
 # 5. Optionally put the primary secret back offline
+#
+#    GnuPG >= 2.1 keeps every secret key as its own file in the agent, so the
+#    primary can be removed on its own via its keygrip. Subkeys stay in place and
+#    `gpg -K` shows `sec#` again. Nothing is exported, so an interrupted run leaves
+#    either the full keyring or the stubbed one — never a stray secret file.
 # ---------------------------------------------------------------------------
 
 if [ "$RESTUB" = true ]; then
   echo ''
+  grip=$(primary_keygrip "$PRIMARY")
   if [ "${DRY_RUN:-}" = "1" ]; then
-    success 'would re-offline the primary secret (export subkeys, delete, re-import)'
+    success "would delete the primary secret from gpg-agent (keygrip ${grip:-<unknown>})"
   else
-    stash=$(mktemp -t subkeys)
-    gpg --export-secret-subkeys "$PRIMARY" > "$stash"
-    [ -s "$stash" ] || { rm -f "$stash"; fail 'subkey export was empty — refusing to delete the secret key'; }
+    [ -n "$grip" ] || fail 'could not determine the primary keygrip — nothing deleted'
+    live_after=$(gpg --list-secret-keys --with-colons "$PRIMARY" 2>/dev/null \
+      | awk -F: '$1=="ssb" && $15!="#"' | grep -c . || true)
+    [ "$live_after" -gt 0 ] || fail 'no usable secret subkeys in the keyring — refusing to delete the primary secret'
 
-    user "delete the primary secret from this keyring and re-import subkeys only? [y/N]"
+    user "delete the primary secret from this keyring (subkeys stay)? [y/N]"
     read -r reply; echo ''
     case "$reply" in
       y|Y)
-        gpg --batch --yes --delete-secret-keys "$PRIMARY"
-        gpg --import "$stash"
+        out=$(gpg-connect-agent "DELETE_KEY --force $grip" /bye 2>&1) || true
+        if printf '%s\n' "$out" | grep -q '^ERR'; then
+          fail "gpg-agent refused to delete the key: $out"
+        fi
+        if primary_secret_available "$PRIMARY"; then
+          fail 'primary secret still present after DELETE_KEY — check gpg -K'
+        fi
         success 'primary secret is offline again (sec#)'
         ;;
       *)  warn "left as-is — primary secret is still in $HOME/.gnupg" ;;
     esac
-    rm -f "$stash"
   fi
 fi
 

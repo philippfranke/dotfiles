@@ -1,8 +1,15 @@
 # ~/.ssh/config — linked from 1password/ssh_config by script/bootstrap.
 #
+# This file is tracked in a PUBLIC repo. Do not add hosts, users or ports here.
+# Host-specific entries belong in the untracked ~/.ssh/config.local, pulled in by
+# the Include below. It sits above the wildcard on purpose: ssh takes the first
+# value it sees for each option, so anything in config.local wins over Host *.
+# A missing config.local is silently ignored.
+#
 # Every host authenticates through the 1Password SSH agent, so no private keys
 # need to live in ~/.ssh: keys are stored in 1Password and unlocked biometrically.
 # Requires the "Use the SSH agent" toggle in 1Password → Settings → Developer.
-# Host-specific entries (aliases, ports, users) can be added above the wildcard.
+Include ~/.ssh/config.local
+
 Host *
 	IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"

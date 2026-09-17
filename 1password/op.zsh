@@ -14,8 +14,11 @@ fi
 # Put `NAME=op://<vault>/<item>/<field>` lines in ~/.config/op/claude.env
 # (untracked, chmod 600 — template in 1password/claude.env.example; override
 # the path with $CLAUDE_OP_ENV_FILE). `op run` resolves the references at
-# launch and exposes the values only to the claude process, so no plaintext
-# token ever lives in a dotfile or the shell env. Without op or the env file
+# launch and puts the values in the claude process's environment, so no
+# plaintext token ever lives in a dotfile or the interactive shell. Note that
+# everything claude spawns — Bash tool calls, hooks, MCP servers — inherits
+# that environment; that is what makes a GITHUB_TOKEN usable by them, and it
+# means anything claude runs can read every injected secret. Without op or the env file
 # this is a transparent pass-through. Skipped inside an existing Claude session
 # ($CLAUDECODE is set): the child already inherits the injected env, and a
 # second `op run` would just trigger another unlock prompt.

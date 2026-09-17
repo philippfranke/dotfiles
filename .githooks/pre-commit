@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+#
+# pre-commit — keep private material out of this PUBLIC repo.
+#
+# Enabled per-repo by script/bootstrap (git config core.hooksPath .githooks).
+# Two checks, both on the staged content only:
+#
+#   1. gitleaks scans the staged diff for credential shapes (API keys, private
+#      key blocks, tokens). Skipped with a warning when gitleaks isn't installed.
+#   2. An untracked deny-list (~/.config/dotfiles/denylist, override with
+#      $DOTFILES_DENYLIST) holds the strings that must never appear here and so
+#      can't be listed in the repo: work-org names, internal hosts, vault names.
+#      One extended regex per line, `#` comments, matched case-insensitively
+#      against every added line and every staged path.
+#
+# Bypass knowingly with `git commit --no-verify`.
+
+set -u
+
+red ()    { printf '\033[0;31m%s\033[0m\n' "$1"; }
+yellow () { printf '\033[0;33m%s\033[0m\n' "$1"; }
+
+status=0
+
+# --- 1. gitleaks -------------------------------------------------------------
+
+if command -v gitleaks >/dev/null 2>&1; then
+  # gitleaks >= 8.19 uses `git --pre-commit --staged`; older releases `protect --staged`.
+  if gitleaks git --help >/dev/null 2>&1; then
+    gitleaks git --pre-commit --staged --redact --verbose --no-banner --log-level warn --exit-code 1 || status=1
+  else
+    gitleaks protect --staged --redact --verbose --no-banner --log-level warn --exit-code 1 || status=1
+  fi
+  [ "$status" -eq 0 ] || red 'pre-commit: gitleaks found a credential in the staged changes'
+else
+  yellow 'pre-commit: gitleaks not installed (brew install gitleaks) — credential scan skipped'
+fi
+
+# --- 2. deny-list ------------------------------------------------------------
+
+denylist="${DOTFILES_DENYLIST:-$HOME/.config/dotfiles/denylist}"
+
+if [ -r "$denylist" ]; then
+  patterns=$(sed -e 's/#.*//' -e 's/[[:space:]]*$//' -e '/^$/d' "$denylist")
+  if [ -n "$patterns" ]; then
+    hits=$(
+      {
+        # Added lines of the staged diff, prefixed with the path they belong to.
+        git diff --cached --no-color -U0 --no-ext-diff \
+          | awk '/^\+\+\+ b\//{f=substr($0,7); next} /^\+/{print f ": " substr($0,2)}'
+        # Staged paths themselves (a filename can leak just as well).
+        git diff --cached --name-only --diff-filter=ACR | sed 's/^/path: /'
+      } | grep -iE -f <(printf '%s\n' "$patterns") || true
+    )
+    if [ -n "$hits" ]; then
+      red 'pre-commit: staged changes match the deny-list:'
+      printf '%s\n' "$hits" | sed 's/^/    /'
+      status=1
+    fi
+  fi
+fi
+
+if [ "$status" -ne 0 ]; then
+  echo ''
+  red 'Commit rejected. Fix the content, or bypass knowingly with --no-verify.'
+fi
+
+exit "$status"

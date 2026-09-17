@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# bootstrap — links this repo's *.symlink files (and two hand-made links) into
+# bootstrap — links this repo's *.symlink files (and a few hand-made links) into
 # $HOME. Contains NO identity: per-machine identity lives ONLY in untracked
 # $HOME override files (~/.gitconfig.identity, ~/.gitconfig.*.local,
 # ~/.config/jj/config.toml). See README.md.
@@ -123,6 +123,24 @@ install_dotfiles () {
 }
 
 install_dotfiles
+
+# Point THIS repo's hooks at the tracked .githooks dir (pre-commit secret scan).
+# Repo-local on purpose: a global core.hooksPath would silence every other
+# repo's own hooks.
+install_hooks () {
+  info 'enabling tracked git hooks for this repo'
+  if [ "${DRY_RUN:-}" = "1" ]; then
+    success "would run: git config core.hooksPath .githooks"
+  elif [ "$(git -C "$DOTFILES_ROOT" config --local --get core.hooksPath 2>/dev/null)" = ".githooks" ]; then
+    success 'core.hooksPath already .githooks'
+  else
+    git -C "$DOTFILES_ROOT" config core.hooksPath .githooks
+    success 'core.hooksPath = .githooks'
+  fi
+  command -v gitleaks >/dev/null 2>&1 || info 'gitleaks not installed — brew install gitleaks for the credential scan'
+}
+
+install_hooks
 
 echo ''
 echo '  All linked! (Identity files in $HOME are NOT managed here — see README.md.)'

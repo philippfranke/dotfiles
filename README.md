@@ -21,9 +21,12 @@ parent directories. **It contains and generates no identity.**
 ## Identity — lives ONLY in untracked `$HOME` files
 
 Author identity and commit signing are never committed. The root `.gitignore`
-matches `*.identity` and `*.local`, so these files can never be committed even if
-they end up inside the repo directory. The tracked, public `git/gitconfig.symlink`
-contains no identity — its only identity-related line is:
+matches `*.identity`, `*.local` and the usual key/token file names, so `git add`
+skips them if they end up inside the repo directory. That is a guard against
+accidents, not a lock: `git add -f` bypasses it, so a tracked pre-commit hook
+scans staged changes as a second line of defence (see "Commit safety net"). The
+tracked, public `git/gitconfig.symlink` contains no identity — its only
+identity-related line is:
 
 ```ini
 [include]
@@ -116,9 +119,13 @@ re-add it where needed as a project-level `.claude/settings.local.json` override
 ### 1Password
 
 `1password/op.zsh` wraps `claude` so Claude Code starts via `op run`: secrets are
-pulled from 1Password at launch and exist only in the `claude` process — nothing
-in the repo, nothing exported in the shell. The wrapper is a plain pass-through
-until you create the untracked env file:
+pulled from 1Password at launch and injected into the `claude` process's
+environment — nothing in the repo, nothing exported in the interactive shell.
+Everything Claude spawns (Bash tool calls, hooks, MCP servers) inherits that
+environment. That is the point for a `GITHUB_TOKEN`, but it also means any
+command Claude runs can read every injected secret, so only inject what the
+session actually needs. The wrapper is a plain pass-through until you create the
+untracked env file:
 
 ```sh
 cp ~/.dotfiles/1password/claude.env.example ~/.config/op/claude.env
@@ -133,6 +140,38 @@ Override its location with `CLAUDE_OP_ENV_FILE`. The same file also sources the
 the 1Password SSH agent (`IdentityAgent`), so private keys live in 1Password rather
 than in `~/.ssh`. Enable the agent in 1Password → Settings → Developer on a new
 machine. Auth material (`known_hosts`, any leftover keys) stays untracked.
+
+The tracked file holds only the wildcard. Host-specific entries (work hosts,
+aliases, ports, users) go in the untracked `~/.ssh/config.local`, which the
+tracked file `Include`s above `Host *` so its settings take precedence. Create it
+with `chmod 600`; ssh ignores it silently when it is absent.
+
+## Commit safety net
+
+This repo is public, so two layers guard against committing something private:
+
+1. **Ignore rules** — the root `.gitignore` covers identity overrides, key and
+   certificate files, token stores and env files. They only stop an unforced
+   `git add`.
+2. **Pre-commit hook** — `.githooks/pre-commit`, enabled per-repo by
+   `script/bootstrap` via `git config core.hooksPath .githooks` (no global hook
+   path, so other repos' hooks are untouched). It rejects a commit when:
+   - [gitleaks](https://github.com/gitleaks/gitleaks) finds a credential in the
+     staged diff (`brew install gitleaks`, or drop the release binary in
+     `~/.local/bin`; skipped with a warning if missing), or
+   - any added line or staged path matches a pattern in the untracked
+     `~/.config/dotfiles/denylist` — one extended regex per line, `#` comments
+     allowed, matched case-insensitively. Put work-org names, internal
+     hostnames and vault names there: exactly the strings that must never appear
+     in this repo and therefore cannot be listed in it.
+
+   A companion `.githooks/commit-msg` hook runs the same deny-list over the
+   commit message, since an org name in a subject line is just as public.
+
+   `git commit --no-verify` bypasses both hooks; use it knowingly.
+
+Also turn on GitHub's *push protection for yourself* (Settings → Code security)
+as a free server-side backstop for known token formats.
 
 ## GitHub CLI (gh)
 

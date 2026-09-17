@@ -8,9 +8,47 @@ git-diagnostics-*
 # Identity & machine-local overrides — never commit these
 *.identity
 *.local
+*.rotate-bak
 
 # GnuPG private material — never commit
 **/.gnupg/
+*.gpg
+*.pgp
+*.asc
+
+# Keys, certificates, tokens — never commit
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+*.kdbx
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*.ppk
+*.ovpn
+*.netrc
+.netrc
+.npmrc
+.pypirc
+hosts.yml
+*.tfstate
+*.tfstate.*
+
+# Env files with real values (the tracked template is *.env.example)
+.env
+.env.*
+*.env
+!*.env.example
+claude.env
 
 # Local Claude settings
 .claude/settings.local.json
+
+# Local hook config
+.gitleaksignore
