@@ -119,6 +119,7 @@ install_dotfiles () {
   link_file "$DOTFILES_ROOT/gnupg/gpg-agent.conf" "$HOME/.gnupg/gpg-agent.conf"
   link_file "$DOTFILES_ROOT/claude/settings.json" "$HOME/.claude/settings.json"
   link_file "$DOTFILES_ROOT/gh/config.yml"       "$HOME/.config/gh/config.yml"
+  link_file "$DOTFILES_ROOT/ghostty/config"      "$HOME/.config/ghostty/config"
   link_file "$DOTFILES_ROOT/1password/ssh_config" "$HOME/.ssh/config"
 }
 

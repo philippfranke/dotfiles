@@ -1,0 +1,63 @@
+# Ghostty config — linked to ~/.config/ghostty/config by script/bootstrap.
+# Mirrors alacritty/alacritty.toml.symlink; keep the two in step. Reload in-app with cmd+shift+, (no
+# auto-reload); background-opacity changes need a full restart.
+
+# --- shell ------------------------------------------------------------------
+# Login zsh that joins (or starts) tmux, same as before. Arguments mean
+# Ghostty runs this through /bin/sh -c, so the quoting is shell quoting.
+command = /opt/homebrew/bin/zsh -l -c "tmux attach || tmux"
+
+# tmux/tmux.conf.symlink keys its true-colour override on xterm-256color, and a
+# tmux server started elsewhere has no xterm-ghostty terminfo, so keep TERM as
+# it was under alacritty.
+term = xterm-256color
+
+# tmux owns scrollback.
+scrollback-limit = 0
+
+# --- font -------------------------------------------------------------------
+font-family = Monaco
+font-size = 12
+# Monaco ships no bold/italic faces; synthesise them like alacritty did.
+font-synthetic-style = true
+
+# --- colours (Material dark) ------------------------------------------------
+background = #212121
+foreground = #eeffff
+background-opacity = 0.95
+
+palette = 0=#212121
+palette = 1=#f07178
+palette = 2=#c3e88d
+palette = 3=#ffcb6b
+palette = 4=#82aaff
+palette = 5=#c792ea
+palette = 6=#89ddff
+palette = 7=#eeffff
+palette = 8=#4a4a4a
+palette = 9=#f07178
+palette = 10=#c3e88d
+palette = 11=#ffcb6b
+palette = 12=#82aaff
+palette = 13=#c792ea
+palette = 14=#89ddff
+palette = 15=#eeffff
+
+# --- window -----------------------------------------------------------------
+# alacritty decorations = "buttonless"
+macos-titlebar-style = hidden
+
+# Selection is not copied until cmd+c (alacritty save_to_clipboard = false).
+copy-on-select = false
+
+# No visual bell (alacritty bell duration = 0); keep the dock bounce.
+bell-features = no-system
+
+# --- keys -------------------------------------------------------------------
+# cmd+c / cmd+v / cmd+plus / cmd+minus are Ghostty defaults.
+keybind = cmd+enter=toggle_fullscreen
+keybind = ctrl+cmd+f=toggle_fullscreen
+# Word motions in zsh without turning the whole option key into alt
+# (that would break option-typed characters on non-US layouts).
+keybind = alt+f=esc:f
+keybind = alt+b=esc:b

@@ -15,7 +15,8 @@ script/bootstrap             # link everything (prompts before touching existing
 
 `script/bootstrap` also creates the links that don't use the `*.symlink`
 convention — `~/.config/nvim/init.vim`, `~/.gnupg/gpg-agent.conf`,
-`~/.claude/settings.json`, `~/.config/gh/config.yml` and `~/.ssh/config` — and creates missing
+`~/.claude/settings.json`, `~/.config/gh/config.yml`, `~/.config/ghostty/config` and
+`~/.ssh/config` — and creates missing
 parent directories. **It contains and generates no identity.**
 
 ## Identity — lives ONLY in untracked `$HOME` files
@@ -187,7 +188,7 @@ credentials (already wired in `git/gitconfig.symlink`). A per-host
 ## Layout
 
 ```
-alacritty/  claude/  docker/  gh/  git/  gnupg/  go/  homebrew/  jj/  rust/  tmux/  vim/  zsh/  1password/
+alacritty/  claude/  docker/  gh/  ghostty/  git/  gnupg/  go/  homebrew/  jj/  rust/  tmux/  vim/  zsh/  1password/
 bin/  functions/  script/                                 # helpers + bootstrap
 ```
 
